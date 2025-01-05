@@ -1,0 +1,67 @@
+from googleapiclient.discovery import build
+from google.oauth2 import service_account
+
+# Path to your service account key file
+SERVICE_ACCOUNT_FILE = 'path/to/your-service-account.json'  # Replace with your service account file
+SCOPES = ['https://www.googleapis.com/auth/documents']
+
+# Authenticate with your service account key
+credentials = service_account.Credentials.from_service_account_file(
+    SERVICE_ACCOUNT_FILE, scopes=SCOPES)
+docs_service = build('docs', 'v1', credentials=credentials)
+
+# Create a new Google Doc
+document_body = {
+    'title': 'Business Math – Module 4: Content Guide'
+}
+doc = docs_service.documents().create(body=document_body).execute()
+document_id = doc.get('documentId')
+
+# Function to add a table to the Google Doc
+def insert_table(docs_service, document_id, table_data, location_index):
+    requests = []
+
+    # Define the table structure
+    rows = len(table_data)
+    cols = len(table_data[0])
+    requests.append({
+        'insertTable': {
+            'rows': rows,
+            'columns': cols,
+            'location': {
+                'index': location_index
+            }
+        }
+    })
+
+    # Add content to table cells
+    start_index = location_index + 1  # Start index after the table's location
+    for row in table_data:
+        for cell in row:
+            requests.append({
+                'insertText': {
+                    'location': {
+                        'index': start_index
+                    },
+                    'text': cell
+                }
+            })
+            start_index += len(cell) + 1  # Account for the text length and cell delimiter
+
+    # Send requests to the API
+    docs_service.documents().batchUpdate(
+        documentId=document_id,
+        body={'requests': requests}
+    ).execute()
+
+# Sample data for the table
+table_data = [
+    ["Term", "Definition", "Example"],
+    ["Economy", "The system of money, resources, and goods in a country.", "The U.S. economy includes industries like technology."],
+    ["Market", "A platform where goods are exchanged.", "eBay connects sellers and buyers."]
+]
+
+# Insert the table into the document
+insert_table(docs_service, document_id, table_data, location_index=1)
+
+print(f"Document created successfully. View it at: https://docs.google.com/document/d/{document_id}")
